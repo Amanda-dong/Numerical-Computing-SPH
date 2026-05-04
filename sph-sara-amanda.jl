@@ -93,11 +93,21 @@ function find_neighbors(pos, grid)
 
     # TO DO 2 and 9
     for i in eachindex(pos)
-        key = findfirst(==(i), grid)     
-        
-
-
-
+        cx = clamp(Int(floor(pos[i][1] / cell_size)), 0, grid_res)
+        cy = clamp(Int(floor(pos[i][2] / cell_size)), 0, grid_res)
+        for ox in -1:1
+            for oy in -1:1
+                key = (cx + ox, cy + oy)
+                if haskey(grid, key)
+                    for j in grid[key]
+                        if j != i && norm(pos[i] - pos[j]) < h
+                            push!(neighbors[i], j)
+                        end
+                    end
+                end
+            end
+        end
+    end
 
     return neighbors
 end
@@ -109,10 +119,11 @@ function compute_density!(pos, rho, neighbors)
     for i in eachindex(pos)
         ρ = mass * W_poly6(0.0) #initialize density with self contribution
 
-        # TO DO 3 - compute density via smoothing 
-
-
-        
+        # TO DO 3 - compute density via smoothing
+        for j in neighbors[i]
+            r = norm(pos[i] - pos[j])
+            ρ += mass * W_poly6(r)
+        end
 
         rho[i] = max(ρ, 1e-6)  # prevent division issues
     end
@@ -138,10 +149,10 @@ function compute_forces(pos, vel, rho, P, neighbors)
              # TO DO 4 - compute pressure force and viscosity force
 
             # Symmetric pressure force (stable)
-            #f_p += 
-           
+            f_p += -mass * (P[i]/rho[i]^2 + P[j]/rho[j]^2) * gradW_spiky(rij)
+
             # Viscosity
-            # f_v +=
+            f_v += mu * mass * (vel[j] - vel[i]) / rho[j] * lapW_visc(r)
         end
 
         forces[i] = f_p + f_v + g #gravity also added
@@ -155,8 +166,26 @@ end
 # -----------------------------
 function integrate!(pos, vel, accel)
     # TO DO 5 and 10
+    for i in eachindex(pos)
+        vel[i] += dt * accel[i]
+        pos[i] += dt * vel[i]
 
-    
+        # boundary: left and right walls (reflective, damped)
+        if pos[i][1] < 0.0
+            pos[i][1] = 0.0
+            vel[i][1] = abs(vel[i][1]) * 0.5
+        elseif pos[i][1] > 1.0
+            pos[i][1] = 1.0
+            vel[i][1] = -abs(vel[i][1]) * 0.5
+        end
+
+        # boundary: bottom wall (reflective, more damped)
+        if pos[i][2] < 0.0
+            pos[i][2] = 0.0
+            vel[i][2] = abs(vel[i][2]) * 0.3
+        end
+        # top is open
+    end
 end
 
 function xsph!(vel, pos, rho, neighbors)
