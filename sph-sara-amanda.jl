@@ -1,26 +1,26 @@
 # NYU CS 421 Numerical Computing SPH project
 # Prepared by Dr. Gizem Kayar in April 2026
 # To be completed by Spring 2026 CS 421 students
+# Team: Amanda Dong and Sara Yuen
 
 using LinearAlgebra
 using CSV
 using DataFrames
-using Makie
 
 # -----------------------------
 # Parameters
 # -----------------------------
 
- # TO DO 6
-const h    = 0.04 
+# TO DO 6
+const h    = 0.04
 const mass = 1.06
 const rho0 = 1000.0
 const k    = 3000.0
 const mu   = 0.1
 const g    = [0.0, -9.8]
 const dt   = 2.0e-5
-const STEPS = 100000
-const SAVE_EVERY = 10
+const STEPS = 20000
+const SAVE_EVERY = 20
 const dx   = h * 0.8
 
 const cell_size = h
@@ -30,33 +30,31 @@ const grid_res = Int(ceil(1.0 / cell_size))  # domain [0,1]
 # Kernels
 # -----------------------------
 
- # TO DO 7
-W_poly6(r) = (0 ≤ r ≤ h) ? 4/(pi*h^8)*(h^2 - r^2)^3 : 0.0
+# TO DO 7
+W_poly6(r) = (0 ≤ r ≤ h) ? 4 / (pi * h^8) * (h^2 - r^2)^3 : 0.0
 
 function gradW_spiky(rvec)
     r = norm(rvec)
-    (0 < r ≤ h) ? -30/(pi*h^5)*(h - r)^2*(rvec/r) : zeros(2)
+    (0 < r ≤ h) ? -30 / (pi * h^5) * (h - r)^2 * (rvec / r) : zeros(2)
 end
 
-lapW_visc(r) = (0 ≤ r ≤ h) ? 20/(3*pi*h^5)*(h - r) : 0.0
+lapW_visc(r) = (0 ≤ r ≤ h) ? 20 / (3 * pi * h^5) * (h - r) : 0.0
 
 # -----------------------------
 # Initialization (corner dam)
 # -----------------------------
 function init_particles()
-    
     pos = Vector{Vector{Float64}}()
     vel = Vector{Vector{Float64}}()
 
     # Dense block in lower-left corner
     # TO DO 1 and 8
-    for  x = dx:dx:0.4
+    for x = dx:dx:0.4
         for y = dx:dx:0.6
             push!(pos, [x, y])
             push!(vel, [0.0, 0.0])
         end
-
-    end 
+    end
 
     Np = length(pos)
     rho = zeros(Np)
@@ -145,17 +143,16 @@ function compute_forces(pos, vel, rho, P, neighbors)
             rij = pos[i] - pos[j]
             r = norm(rij)
 
-            
-             # TO DO 4 - compute pressure force and viscosity force
+            # TO DO 4 - compute pressure force and viscosity force
 
             # Symmetric pressure force (stable)
-            f_p += -mass * (P[i]/rho[i]^2 + P[j]/rho[j]^2) * gradW_spiky(rij)
+            f_p += -mass * (P[i] / rho[i]^2 + P[j] / rho[j]^2) * gradW_spiky(rij)
 
             # Viscosity
             f_v += mu * mass * (vel[j] - vel[i]) / rho[j] * lapW_visc(r)
         end
 
-        forces[i] = f_p + f_v + g #gravity also added
+        forces[i] = f_p + f_v + g  # gravity also added
     end
 
     return forces
